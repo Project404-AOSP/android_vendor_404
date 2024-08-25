@@ -75,34 +75,9 @@ PRODUCT_PACKAGE_OVERLAYS += vendor/overlays/404/overlay
 PRODUCT_VENDOR_MOVE_ENABLED := true
 DISABLE_EAP_PROXY := true
 
-# Face Unlock
-TARGET_FACE_UNLOCK_SUPPORTED ?= true
-ifeq ($(TARGET_FACE_UNLOCK_SUPPORTED),true)
-PRODUCT_PACKAGES += \
-   FaceUnlockService
-PRODUCT_SYSTEM_DEFAULT_PROPERTIES += \
-   ro.face_unlock_service.enabled=$(TARGET_FACE_UNLOCK_SUPPORTED)
-PRODUCT_COPY_FILES += \
-   frameworks/native/data/etc/android.hardware.biometrics.face.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/android.hardware.biometrics.face.xml
-endif
-
-# NameSpaces
-PRODUCT_SOONG_NAMESPACES += vendor/qcom/opensource/commonsys/packages/apps/Bluetooth
-PRODUCT_SOONG_NAMESPACES += vendor/qcom/opensource/commonsys/system/bt/conf
-
-# QCOM
-# Include Common Qualcomm Device Tree on Qualcomm Boards
-$(call inherit-product-if-exists, device/qcom/common/common.mk)
-
-# Include definitions for Snapdragon Clang
-$(call inherit-product, vendor/qcom/sdclang/config/SnapdragonClang.mk)
-
 # Sensitive Phone Numbers list
 PRODUCT_COPY_FILES += \
     vendor/404/prebuilt/common/etc/sensitive_pn.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/sensitive_pn.xml
-
-# Telephony
-$(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base_telephony.mk)
 
 # World APN list
 PRODUCT_COPY_FILES += \
