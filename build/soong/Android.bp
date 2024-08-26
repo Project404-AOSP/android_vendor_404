@@ -1,54 +1,59 @@
 // P404 Soong Configurations
 
-soong_config_module_type {
-    name: "needs_camera_boottime",
-    module_type: "cc_defaults",
-    config_namespace: "p404GlobalVars",
-    bool_variables: ["needs_camera_boottime"],
-    properties: ["cppflags"],
+bootstrap_go_package {
+    name: "soong-p404-generator",
+    pkgPath: "p404/soong/generator",
+    deps: [
+        "blueprint",
+        "blueprint-pathtools",
+        "soong",
+        "soong-android",
+        "soong-shared",
+    ],
+    srcs: [
+        "generator/generator.go",
+        "generator/variables.go",
+    ],
+    pluginFor: ["soong_build"],
 }
 
-needs_camera_boottime {
-    name: "needs_camera_boottime_defaults",
-    soong_config_variables: {
-        needs_camera_boottime: {
-            cppflags: ["-DTARGET_CAMERA_BOOTTIME_TIMESTAMP"],
-        },
-    },
+p404_generator {
+    name: "generated_kernel_includes",
+
+    // The headers make command
+    cmd: "$(PATH_OVERRIDE_SOONG) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) -C $(TARGET_KERNEL_SOURCE) O=$(KERNEL_BUILD_OUT_PREFIX)$(genDir) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) headers_install && vendor/p404/tools/clean_headers.sh $(KERNEL_BUILD_OUT_PREFIX)$(genDir)",
+
+    // Directories that can be imported by a cc_* module generated_headers property
+    export_include_dirs: [
+        "usr/audio/include/uapi",
+        "usr/include",
+        "usr/include/audio",
+        "usr/include/audio/include/uapi",
+        "usr/techpack/audio/include",
+    ],
+
+    // Sources for dependency tracking
+    dep_root: "$(TARGET_KERNEL_SOURCE)",
+    dep_files: [
+        "Makefile",
+        "include/**/*",
+        "arch/$(KERNEL_ARCH)/include/**/*",
+        "techpack/audio/include/**/*",
+    ],
 }
 
-soong_config_module_type {
-    name: "target_process_sdk_version_overrides",
-    module_type: "cc_defaults",
-    config_namespace: "p404GlobalVars",
-    value_variables: ["target_process_sdk_version_override"],
-    properties: ["cppflags"],
+genrule_defaults {
+    name: "7z_genrule_defaults",
+    tools: ["7z"],
+    cmd: "$(location 7z) e -so $$(echo $(in) | cut -f1 -d ' ') > $(out)",
 }
 
-target_process_sdk_version_overrides {
-    name: "process_sdk_version_overrides_defaults",
-    soong_config_variables: {
-        target_process_sdk_version_override: {
-            cppflags: ["-DSDK_VERSION_OVERRIDES=\"%s\""],
-        },
-    },
-}
-
-soong_config_module_type {
-    name: "target_shim_libs",
-    module_type: "cc_defaults",
-    config_namespace: "p404GlobalVars",
-    value_variables: ["target_ld_shim_libs"],
-    properties: ["cppflags"],
-}
-
-target_shim_libs {
-    name: "shim_libs_defaults",
-    soong_config_variables: {
-        target_ld_shim_libs: {
-            cppflags: ["-DLD_SHIM_LIBS=\"%s\""],
-        },
-    },
+cc_library_headers {
+    name: "generated_kernel_headers",
+    generated_headers: ["generated_kernel_includes"],
+    export_generated_headers: ["generated_kernel_includes"],
+    vendor_available: true,
+    recovery_available: true,
 }
 
 soong_config_module_type {
@@ -83,6 +88,194 @@ vendor_init {
     name: "vendor_init_defaults",
     soong_config_variables: {
         target_init_vendor_lib: {
+            whole_static_libs: ["%s"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "bootloader_message_offset",
+    module_type: "cc_defaults",
+    config_namespace: "p404GlobalVars",
+    value_variables: ["bootloader_message_offset"],
+    properties: [
+        "cflags",
+        "export_cflags",
+    ],
+}
+
+bootloader_message_offset {
+    name: "bootloader_message_offset_defaults",
+    soong_config_variables: {
+        bootloader_message_offset: {
+            cflags: ["-DBOARD_RECOVERY_BLDRMSG_OFFSET=%s"],
+            export_cflags: ["-DBOARD_RECOVERY_BLDRMSG_OFFSET=%s"],
+        },
+    },
+}
+
+// QCOM specific config modules
+soong_config_module_type {
+    name: "librmnetctl_pre_uplink",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["uses_pre_uplink_features_netmgrd"],
+    properties: ["cflags"],
+}
+
+librmnetctl_pre_uplink {
+    name: "librmnetctl_pre_uplink_defaults",
+    soong_config_variables: {
+        uses_pre_uplink_features_netmgrd: {
+            cflags: ["-DNO_UPLINK_FEATURES"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "extended_compress_format",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["supports_extended_compress_format"],
+    properties: ["cflags"],
+}
+
+extended_compress_format {
+    name: "extended_compress_format_defaults",
+    soong_config_variables: {
+        supports_extended_compress_format: {
+            cflags: ["-DENABLE_EXTENDED_COMPRESS_FORMAT"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "surfaceflinger_qcom_extensions",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    value_variables: ["qcom_display_headers_namespace"],
+    properties: [
+        "cppflags",
+        "header_libs",
+    ],
+}
+
+surfaceflinger_qcom_extensions {
+    name: "surfaceflinger_qcom_ext_defaults",
+    soong_config_variables: {
+        qcom_display_headers_namespace: {
+            cppflags: ["-DQCOM_UM_FAMILY"],
+            header_libs: ["//%s:display_intf_headers"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "gralloc_handle_custom_content_md_reserved_size",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["gralloc_handle_has_custom_content_md_reserved_size"],
+    properties: ["export_cflags"],
+}
+
+gralloc_handle_custom_content_md_reserved_size {
+    name: "gralloc_handle_has_custom_content_md_reserved_size_defaults",
+    soong_config_variables: {
+        gralloc_handle_has_custom_content_md_reserved_size: {
+            export_cflags: ["-DGRALLOC_HANDLE_HAS_CUSTOM_CONTENT_MD_RESERVED_SIZE"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "gralloc_handle_reserved_size",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["gralloc_handle_has_reserved_size"],
+    properties: ["export_cflags"],
+}
+
+gralloc_handle_reserved_size {
+    name: "gralloc_handle_has_reserved_size_defaults",
+    soong_config_variables: {
+        gralloc_handle_has_reserved_size: {
+            export_cflags: ["-DGRALLOC_HANDLE_HAS_RESERVED_SIZE"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "gralloc_handle_ubwcp_format",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["gralloc_handle_has_ubwcp_format"],
+    properties: ["export_cflags"],
+}
+
+gralloc_handle_ubwcp_format {
+    name: "gralloc_handle_has_ubwcp_format_defaults",
+    soong_config_variables: {
+        gralloc_handle_has_ubwcp_format: {
+            export_cflags: ["-DGRALLOC_HANDLE_HAS_UBWCP_FORMAT"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "qti_vibrator_hal",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["qti_vibrator_use_effect_stream"],
+    value_variables: ["qti_vibrator_effect_lib"],
+    properties: [
+        "cppflags",
+        "shared_libs",
+    ],
+}
+
+qti_vibrator_hal {
+    name: "qti_vibrator_hal_defaults",
+    soong_config_variables: {
+        qti_vibrator_use_effect_stream: {
+            cppflags: ["-DUSE_EFFECT_STREAM"],
+        },
+        qti_vibrator_effect_lib: {
+            shared_libs: ["%s"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "sdmcore_has_is_display_hw_available",
+    module_type: "cc_defaults",
+    config_namespace: "p404QcomVars",
+    bool_variables: ["sdmcore_has_is_display_hw_available_func"],
+    properties: ["cflags"],
+}
+
+sdmcore_has_is_display_hw_available {
+    name: "sdmcore_has_is_display_hw_available_func_defaults",
+    soong_config_variables: {
+        sdmcore_has_is_display_hw_available_func: {
+            cflags: ["-DSDMCORE_HAS_IS_DISPLAY_HW_AVAILABLE_FUNC"],
+        },
+    },
+}
+
+soong_config_module_type {
+    name: "power_libperfmgr",
+    module_type: "cc_defaults",
+    config_namespace: "p404GlobalVars",
+    value_variables: ["target_power_libperfmgr_mode_extension_lib"],
+    properties: [
+        "whole_static_libs",
+    ],
+}
+
+power_libperfmgr {
+    name: "power_libperfmgr_defaults",
+    soong_config_variables: {
+        target_power_libperfmgr_mode_extension_lib: {
             whole_static_libs: ["%s"],
         },
     },

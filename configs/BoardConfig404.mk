@@ -13,10 +13,13 @@
 # limitations under the License.
 
 # Include our Qualcomm Board configuration.
-include device/qcom/common/BoardConfigQcom.mk
-
+ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
+include hardware/qcom-caf/common/BoardConfigQcom.mk
+endif
 # Kernel
 include vendor/404/configs/BoardConfigKernel.mk
 
 # Soong
 include vendor/404/configs/BoardConfigSoong.mk
+
+# Todo Make Sepolicy up then add it

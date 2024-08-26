@@ -19,14 +19,6 @@ PRODUCT_PACKAGES += \
     p404_charger \
     p404_charger_vendor
 
-# Filesystems tools
-PRODUCT_PACKAGES += \
-    fsck.ntfs \
-    mkfs.ntfs \
-    mount.ntfs \
-    fsck.exfat \
-    mkfs.exfat
-
 # 404 Packages
 PRODUCT_PACKAGES += \
     P404Launcher \
